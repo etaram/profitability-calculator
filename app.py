@@ -98,28 +98,37 @@ def calculate_financial_metrics(villas, size):
     net_annual_profit_before_subsidy = gross_annual_profit * (1 - tax_rate)
 
     # חישוב רווח נקי שנתי כולל סובסידיה
-    net_annual_profit_with_subsidy_min = net_annual_profit_before_subsidy + (total_construction_cost * subsidy_min)
-    net_annual_profit_with_subsidy_max = net_annual_profit_before_subsidy + (total_construction_cost * subsidy_max)
+    net_annual_profit_with_subsidy_min = net_annual_profit_before_subsidy + (total_construction_cost * subsidy_min / loan_term)
+    net_annual_profit_with_subsidy_max = net_annual_profit_before_subsidy + (total_construction_cost * subsidy_max / loan_term)
 
     # חישוב NPV עם סובסידיה
-    cash_flow_min = [net_annual_profit_with_subsidy_min / ((1 + discount_rate) ** year) for year in range(1, 16)]
-    total_npv_min = sum(cash_flow_min) - (total_construction_cost * (1 - subsidy_min))
+    cash_flow_min = [-total_construction_cost] + [net_annual_profit_with_subsidy_min] * loan_term
+    cash_flow_max = [-total_construction_cost] + [net_annual_profit_with_subsidy_max] * loan_term
+    total_npv_min = npf.npv(discount_rate, cash_flow_min)
+    total_npv_max = npf.npv(discount_rate, cash_flow_max)
 
-    # חישוב ROI עם סובסידיה מינימלית
-    roi_min = ((net_annual_profit_with_subsidy_min * 10) - (total_construction_cost * (1 - subsidy_min))) / (total_construction_cost * (1 - subsidy_min)) * 100
+    # חישוב ROI עם סובסידיה מינימלית ומקסימלית
+    roi_min = ((net_annual_profit_with_subsidy_min * loan_term) - (total_construction_cost * (1 - subsidy_min))) / (total_construction_cost * (1 - subsidy_min)) * 100
+    roi_max = ((net_annual_profit_with_subsidy_max * loan_term) - (total_construction_cost * (1 - subsidy_max))) / (total_construction_cost * (1 - subsidy_max)) * 100
 
     # חישוב IRR
-    irr_min = npf.irr([-total_construction_cost * (1 - subsidy_min)] + [net_annual_profit_with_subsidy_min] * 15) * 100
+    irr_min = npf.irr(cash_flow_min) * 100
+    irr_max = npf.irr(cash_flow_max) * 100
 
     # חישוב תקופת החזר
     payback_period_min = (total_construction_cost * (1 - subsidy_min)) / net_annual_profit_with_subsidy_min
+    payback_period_max = (total_construction_cost * (1 - subsidy_max)) / net_annual_profit_with_subsidy_max
 
     # החזרת ערכי המדדים הפיננסיים
     return {
-        'NPV': total_npv_min,
-        'ROI': roi_min,
-        'IRR': irr_min,
-        'Payback Period': payback_period_min,
+        'NPV Min': total_npv_min,
+        'NPV Max': total_npv_max,
+        'ROI Min': roi_min,
+        'ROI Max': roi_max,
+        'IRR Min': irr_min,
+        'IRR Max': irr_max,
+        'Payback Period Min': payback_period_min,
+        'Payback Period Max': payback_period_max,
         'Gross Annual Profit': gross_annual_profit,
         'Net Annual Profit (Before Subsidy)': net_annual_profit_before_subsidy,
         'Net Annual Profit with Min Subsidy': net_annual_profit_with_subsidy_min,
@@ -229,15 +238,15 @@ loan_payments_df = pd.DataFrame(loan_payments)
 metrics = calculate_financial_metrics(num_villas, villa_size_sqm)
 
 # הצגת התראות דינמיות על סמך תוצאות
-if metrics['NPV'] > 0:
-    st.success(f"הפרויקט רווחי עם NPV של {int(metrics['NPV']):,} ₪!")
+if metrics['NPV Min'] > 0:
+    st.success(f"הפרויקט רווחי עם NPV מינימלי של {int(metrics['NPV Min']):,} ₪!")
 else:
-    st.error("הפרויקט עשוי להיות לא רווחי. ה-NPV שלילי.")
+    st.error("הפרויקט עשוי להיות לא רווחי. ה-NPV המינימלי שלילי.")
 
-if metrics['IRR'] > discount_rate * 100:
-    st.info(f"ישנה תשואה פנימית (IRR) גבוהה מהיוון: {metrics['IRR']:.2f}%.")
+if metrics['IRR Min'] > discount_rate * 100:
+    st.info(f"ישנה תשואה פנימית (IRR) מינימלית גבוהה מהיוון: {metrics['IRR Min']:.2f}%.")
 else:
-    st.warning(f"תשואה פנימית (IRR) נמוכה משיעור ההיוון: {metrics['IRR']:.2f}%.")
+    st.warning(f"תשואה פנימית (IRR) מינימלית נמוכה משיעור ההיוון: {metrics['IRR Min']:.2f}%.")
 
 # הצגת תוצאות פיננסיות מפורטות
 st.write(f"**עלויות הקמה כוללות:** {int(metrics['Total Construction Cost']):,} ₪")
@@ -246,17 +255,14 @@ st.write(f"**רווח גולמי שנתי:** {int(metrics['Gross Annual Profit']
 st.write(f"**רווח נקי שנתי לפני סובסידיה:** {int(metrics['Net Annual Profit (Before Subsidy)']):,} ₪")
 st.write(f"**רווח נקי שנתי עם סובסידיה מינימלית:** {int(metrics['Net Annual Profit with Min Subsidy']):,} ₪")
 st.write(f"**רווח נקי שנתי עם סובסידיה מקסימלית:** {int(metrics['Net Annual Profit with Max Subsidy']):,} ₪")
-st.write(f"**החזר על השקעה (ROI):** {metrics['ROI']:.2f}%")
-st.write(f"**ערך נוכחי נקי (NPV):** {int(metrics['NPV']):,} ₪")
-st.write(f"**שיעור תשואה פנימי (IRR):** {metrics['IRR']:.2f}%")
-st.write(f"**תקופת החזר:** {metrics['Payback Period']:.2f} שנים")
-
-# הערכת רווחיות
-st.write("### חוות דעת על רווחיות הפרויקט")
-if metrics['NPV'] > 0 and metrics['IRR'] > discount_rate * 100:
-    st.write("הפרויקט נראה רווחי ומציע החזר חיובי על ההשקעה (NPV חיובי ו-IRR גבוה משיעור ההיוון). מומלץ לשקול להשקיע בפרויקט.")
-else:
-    st.write("הפרויקט עשוי להיות פחות רווחי (NPV שלילי או IRR נמוך משיעור ההיוון). מומלץ לבחון מחדש את הפרמטרים ולהעריך את הסיכונים.")
+st.write(f"**החזר על השקעה (ROI) מינימלי:** {metrics['ROI Min']:.2f}%")
+st.write(f"**החזר על השקעה (ROI) מקסימלי:** {metrics['ROI Max']:.2f}%")
+st.write(f"**ערך נוכחי נקי (NPV) מינימלי:** {int(metrics['NPV Min']):,} ₪")
+st.write(f"**ערך נוכחי נקי (NPV) מקסימלי:** {int(metrics['NPV Max']):,} ₪")
+st.write(f"**שיעור תשואה פנימי (IRR) מינימלי:** {metrics['IRR Min']:.2f}%")
+st.write(f"**שיעור תשואה פנימי (IRR) מקסימלי:** {metrics['IRR Max']:.2f}%")
+st.write(f"**תקופת החזר מינימלית:** {metrics['Payback Period Min']:.2f} שנים")
+st.write(f"**תקופת החזר מקסימלית:** {metrics['Payback Period Max']:.2f} שנים")
 
 # הצגת טבלת תשלומי הלוואה
 st.markdown("<div dir='rtl'>### תשלומי הלוואה לפי סוג סילוקין</div>", unsafe_allow_html=True)
@@ -267,29 +273,28 @@ st.markdown("<div dir='rtl'>### גרפים נוספים</div>", unsafe_allow_htm
 
 # גרף השוואת תזרימי מזומנים
 fig1, ax1 = plt.subplots()
-years = list(range(1, 16))
+years = list(range(1, loan_term + 1))
 cash_flows_subsidy_min = [metrics['Net Annual Profit with Min Subsidy'] / ((1 + discount_rate) ** y) for y in years]
 cash_flows_subsidy_max = [metrics['Net Annual Profit with Max Subsidy'] / ((1 + discount_rate) ** y) for y in years]
-ax1.plot(years, cash_flows_subsidy_min, label='Cash Flows with Minimum Subsidy')
-ax1.plot(years, cash_flows_subsidy_max, label='Cash Flows with Maximum Subsidy')
-ax1.set_title('Comparison of Cash Flows with and without Subsidy')
-ax1.set_xlabel('Years')
-ax1.set_ylabel('Cash Flows (₪)')
+ax1.plot(years, cash_flows_subsidy_min, label='תזרים מזומנים עם סובסידיה מינימלית')
+ax1.plot(years, cash_flows_subsidy_max, label='תזרים מזומנים עם סובסידיה מקסימלית')
+ax1.set_title('השוואת תזרימי מזומנים עם וללא סובסידיה')
+ax1.set_xlabel('שנים')
+ax1.set_ylabel('תזרים מזומנים (₪)')
 ax1.legend()
 st.pyplot(fig1)
 
 # גרף השוואת רווחיות לפי מספר וילות
 fig2, ax2 = plt.subplots(figsize=(10, 6))
 villa_range = range(5, 41)
-npv_results = [calculate_financial_metrics(v, villa_size_sqm)['NPV'] for v in villa_range]
-ax2.plot(villa_range, npv_results, marker='o', label='NPV (Net Present Value)')
-ax2.set_title('Project Efficiency by Number of Villas', fontsize=14, fontweight='bold', loc='right')
-ax2.set_xlabel('Number of Villas', fontsize=12)
-ax2.set_ylabel('NPV (Net Present Value)', fontsize=12)
-ax2.legend(loc='best', fontsize=10)
+npv_results = [calculate_financial_metrics(v, villa_size_sqm)['NPV Min'] for v in villa_range]
+ax2.plot(villa_range, npv_results, marker='o', label='NPV (ערך נוכחי נקי)')
+ax2.set_title('יעילות הפרויקט לפי מספר וילות')
+ax2.set_xlabel('מספר וילות')
+ax2.set_ylabel('NPV (ערך נוכחי נקי)')
+ax2.legend()
 ax2.grid(True)
 st.pyplot(fig2)
-
 
 # מחשבון אינטראקטיבי להשוואה בין תרחישים
 st.markdown("<div dir='rtl'>### השוואה בין תרחישים</div>", unsafe_allow_html=True)
@@ -300,19 +305,27 @@ metrics_scenario_1 = calculate_financial_metrics(num_villas_scenario_1, villa_si
 metrics_scenario_2 = calculate_financial_metrics(num_villas_scenario_2, villa_size_sqm)
 
 comparison_df = pd.DataFrame({
-    'מדד': ['NPV', 'ROI', 'IRR', 'תקופת החזר', 'רווח גולמי שנתי'],
+    'מדד': ['NPV מינימלי', 'NPV מקסימלי', 'ROI מינימלי', 'ROI מקסימלי', 'IRR מינימלי', 'IRR מקסימלי', 'תקופת החזר מינימלית', 'תקופת החזר מקסימלית', 'רווח גולמי שנתי'],
     'תרחיש 1': [
-        f"{int(metrics_scenario_1['NPV']):,} ₪",
-        f"{metrics_scenario_1['ROI']:.2f}%",
-        f"{metrics_scenario_1['IRR']:.2f}%",
-        f"{metrics_scenario_1['Payback Period']:.2f} שנים",
+        f"{int(metrics_scenario_1['NPV Min']):,} ₪",
+        f"{int(metrics_scenario_1['NPV Max']):,} ₪",
+        f"{metrics_scenario_1['ROI Min']:.2f}%",
+        f"{metrics_scenario_1['ROI Max']:.2f}%",
+        f"{metrics_scenario_1['IRR Min']:.2f}%",
+        f"{metrics_scenario_1['IRR Max']:.2f}%",
+        f"{metrics_scenario_1['Payback Period Min']:.2f} שנים",
+        f"{metrics_scenario_1['Payback Period Max']:.2f} שנים",
         f"{int(metrics_scenario_1['Gross Annual Profit']):,} ₪"
     ],
     'תרחיש 2': [
-        f"{int(metrics_scenario_2['NPV']):,} ₪",
-        f"{metrics_scenario_2['ROI']:.2f}%",
-        f"{metrics_scenario_2['IRR']:.2f}%",
-        f"{metrics_scenario_2['Payback Period']:.2f} שנים",
+        f"{int(metrics_scenario_2['NPV Min']):,} ₪",
+        f"{int(metrics_scenario_2['NPV Max']):,} ₪",
+        f"{metrics_scenario_2['ROI Min']:.2f}%",
+        f"{metrics_scenario_2['ROI Max']:.2f}%",
+        f"{metrics_scenario_2['IRR Min']:.2f}%",
+        f"{metrics_scenario_2['IRR Max']:.2f}%",
+        f"{metrics_scenario_2['Payback Period Min']:.2f} שנים",
+        f"{metrics_scenario_2['Payback Period Max']:.2f} שנים",
         f"{int(metrics_scenario_2['Gross Annual Profit']):,} ₪"
     ]
 })
@@ -323,10 +336,10 @@ st.dataframe(comparison_df.style.set_properties(**{'text-align': 'right'}))
 st.write("### חוות דעת על רווחיות התרחישים")
 for scenario_num, metrics in zip([1, 2], [metrics_scenario_1, metrics_scenario_2]):
     st.write(f"**תרחיש {scenario_num}:**")
-    if metrics['NPV'] > 0 and metrics['IRR'] > discount_rate * 100:
+    if metrics['NPV Min'] > 0 and metrics['IRR Min'] > discount_rate * 100:
         st.success(f"תרחיש {scenario_num} רווחי ומציע החזר חיובי על ההשקעה.")
     else:
-        st.warning(f"תרחיש {scenario_num} עשוי להיות פחות רווחי.")
+        st.warning(f"תרחיש {scenario_num} עשוי להיות פחות רווחי. מומלץ לבחון מחדש את הפרמטרים.")
 
 # התאמה לרספונסיביות
 st.write("""
