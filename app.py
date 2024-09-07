@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy_financial as npf
 
-# הגדרות לעברית וכיווניות מימין לשמאל
+# הגדרות לעברית וכיווניות מימין לשמאל עבור Streamlit
 plt.rc('font', family='Arial')
 plt.rcParams['axes.unicode_minus'] = False
 
@@ -14,7 +14,6 @@ st.markdown(
     <style>
     .main-title {
         font-size: 40px;
-        font-weight: bold;
         color: #d04f30;
         text-align: center;
         margin-bottom: 30px;
@@ -40,11 +39,13 @@ st.markdown(
     }
     .css-1kyxreq, .css-14xtw13, .css-1lcbmhc {
         color: #ffffff;
+        text-align: right;  /* כיווניות לימין */
     }
     .dataframe {
         background-color: #34495e;
         color: #ffffff;
         border: 1px solid #dddddd;
+        text-align: right; /* כיווניות לימין */
     }
     @media (max-width: 768px) {
         .stApp {
@@ -244,10 +245,9 @@ else:
     st.error("הפרויקט עשוי להיות לא רווחי. ה-NPV המינימלי שלילי.")
 
 if metrics['IRR Min'] > discount_rate * 100:
-    st.info(f"ישנה תשואה פנימית (IRR) מינימלית גבוהה מהיוון: {metrics['IRR Min']:.2f}%.")
+    st.success(f"שיעור תשואה פנימית (IRR) מינימלי חיובי: {metrics['IRR Min']:.2f}%.")
 else:
-    st.error(f"תשואה פנימית (IRR) מינימלית נמוכה משיעור ההיוון: {metrics['IRR Min']:.2f}%.")
-
+    st.error(f"שיעור תשואה פנימית (IRR) מינימלי נמוך משיעור ההיוון: {metrics['IRR Min']:.2f}%.")
 
 # הצגת תוצאות פיננסיות מפורטות
 st.write(f"**עלויות הקמה כוללות:** {int(metrics['Total Construction Cost']):,} ₪")
@@ -260,8 +260,8 @@ st.write(f"**החזר על השקעה (ROI) מינימלי:** {metrics['ROI Min'
 st.write(f"**החזר על השקעה (ROI) מקסימלי:** {metrics['ROI Max']:.2f}%")
 st.write(f"**ערך נוכחי נקי (NPV) מינימלי:** {int(metrics['NPV Min']):,} ₪")
 st.write(f"**ערך נוכחי נקי (NPV) מקסימלי:** {int(metrics['NPV Max']):,} ₪")
-st.write(f"**שיעור תשואה פנימי (IRR) מינימלי:** {metrics['IRR Min']:.2f}%")
-st.write(f"**שיעור תשואה פנימי (IRR) מקסימלי:** {metrics['IRR Max']:.2f}%")
+st.write(f"**שיעור תשואה פנימית (IRR) מינימלי:** {metrics['IRR Min']:.2f}%")
+st.write(f"**שיעור תשואה פנימית (IRR) מקסימלי:** {metrics['IRR Max']:.2f}%")
 st.write(f"**תקופת החזר מינימלית:** {metrics['Payback Period Min']:.2f} שנים")
 st.write(f"**תקופת החזר מקסימלית:** {metrics['Payback Period Max']:.2f} שנים")
 
@@ -271,31 +271,29 @@ st.dataframe(loan_payments_df.style.set_properties(**{'text-align': 'right'}))
 
 # גרפים נוספים
 st.markdown("<div dir='rtl'>### גרפים נוספים</div>", unsafe_allow_html=True)
-
-# גרף השוואת תזרימי מזומנים
 fig1, ax1 = plt.subplots()
 years = list(range(1, loan_term + 1))
 cash_flows_subsidy_min = [metrics['Net Annual Profit with Min Subsidy'] / ((1 + discount_rate) ** y) for y in years]
 cash_flows_subsidy_max = [metrics['Net Annual Profit with Max Subsidy'] / ((1 + discount_rate) ** y) for y in years]
-ax1.plot(years, cash_flows_subsidy_min, label='תזרים מזומנים עם סובסידיה מינימלית')
-ax1.plot(years, cash_flows_subsidy_max, label='תזרים מזומנים עם סובסידיה מקסימלית')
-ax1.set_title('השוואת תזרימי מזומנים עם וללא סובסידיה')
-ax1.set_xlabel('שנים')
-ax1.set_ylabel('תזרים מזומנים (₪)')
+ax1.plot(years, cash_flows_subsidy_min, label='Cash Flows with Minimum Subsidy')
+ax1.plot(years, cash_flows_subsidy_max, label='Cash Flows with Maximum Subsidy')
+ax1.set_title('Comparison of Cash Flows with and without Subsidy')
+ax1.set_xlabel('Years')
+ax1.set_ylabel('Cash Flows (₪)')
 ax1.legend()
 st.pyplot(fig1)
 
-# גרף השוואת רווחיות לפי מספר וילות
-fig2, ax2 = plt.subplots(figsize=(10, 6))
+# גרף השוואת ROI לפי מספר וילות
+fig3, ax3 = plt.subplots(figsize=(10, 6))
 villa_range = range(5, 41)
-npv_results = [calculate_financial_metrics(v, villa_size_sqm)['NPV Min'] for v in villa_range]
-ax2.plot(villa_range, npv_results, marker='o', label='NPV (ערך נוכחי נקי)')
-ax2.set_title('יעילות הפרויקט לפי מספר וילות')
-ax2.set_xlabel('מספר וילות')
-ax2.set_ylabel('NPV (ערך נוכחי נקי)')
-ax2.legend()
-ax2.grid(True)
-st.pyplot(fig2)
+roi_results = [calculate_financial_metrics(v, villa_size_sqm)['ROI Min'] for v in villa_range]
+ax3.plot(villa_range, roi_results, marker='o', label='ROI (Return on Investment)', color='blue')
+ax3.set_title('ROI by Number of Villas')
+ax3.set_xlabel('Number of Villas')
+ax3.set_ylabel('ROI (%)')
+ax3.legend()
+ax3.grid(True)
+st.pyplot(fig3)
 
 # מחשבון אינטראקטיבי להשוואה בין תרחישים
 st.markdown("<div dir='rtl'>### השוואה בין תרחישים</div>", unsafe_allow_html=True)
@@ -306,7 +304,7 @@ metrics_scenario_1 = calculate_financial_metrics(num_villas_scenario_1, villa_si
 metrics_scenario_2 = calculate_financial_metrics(num_villas_scenario_2, villa_size_sqm)
 
 comparison_df = pd.DataFrame({
-    'מדד': ['NPV מינימלי', 'NPV מקסימלי', 'ROI מינימלי', 'ROI מקסימלי', 'IRR מינימלי', 'IRR מקסימלי', 'תקופת החזר מינימלית', 'תקופת החזר מקסימלית', 'רווח גולמי שנתי'],
+    'מדד': ['NPV Min', 'NPV Max', 'ROI Min', 'ROI Max', 'IRR Min', 'IRR Max', 'תקופת החזר מינימלית', 'תקופת החזר מקסימלית', 'רווח גולמי שנתי'],
     'תרחיש 1': [
         f"{int(metrics_scenario_1['NPV Min']):,} ₪",
         f"{int(metrics_scenario_1['NPV Max']):,} ₪",
@@ -340,22 +338,28 @@ for scenario_num, metrics in zip([1, 2], [metrics_scenario_1, metrics_scenario_2
     if metrics['NPV Min'] > 0 and metrics['IRR Min'] > discount_rate * 100:
         st.success(f"תרחיש {scenario_num} רווחי ומציע החזר חיובי על ההשקעה.")
     else:
-        st.warning(f"תרחיש {scenario_num} עשוי להיות פחות רווחי. מומלץ לבחון מחדש את הפרמטרים.")
+        st.error(f"תרחיש {scenario_num} עשוי להיות פחות רווחי. מומלץ לבחון מחדש את הפרמטרים ולהעריך את הסיכונים.")
 
 # התאמה לרספונסיביות
 st.write("""
-            <style>
-            @media (max-width: 768px) {
-                .stApp {
-                    padding: 20px;
-                }
-                .main-title {
-                    font-size: 28px;
-                }
-                .stButton>button {
-                    height: 35px;
-                }
-            }
-            </style>
-            """, unsafe_allow_html=True)
+    <style>
+    @media (max-width: 768px) {
+        .stApp {
+            padding: 20px;
+        }
+        .main-title {
+            font-size: 28px;
+        }
+        .stButton>button {
+            height: 35px;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# שינוי צבע ההודעות לפי התוצאות
+if metrics['IRR Max'] > discount_rate * 100:
+    st.success(f"שיעור תשואה פנימית (IRR) מקסימלי חיובי: {metrics['IRR Max']:.2f}%.")
+else:
+    st.error(f"שיעור תשואה פנימית (IRR) מקסימלי נמוך משיעור ההיוון: {metrics['IRR Max']:.2f}%.")
 
