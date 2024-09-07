@@ -246,7 +246,8 @@ else:
 if metrics['IRR Min'] > discount_rate * 100:
     st.info(f"ישנה תשואה פנימית (IRR) מינימלית גבוהה מהיוון: {metrics['IRR Min']:.2f}%.")
 else:
-    st.warning(f"תשואה פנימית (IRR) מינימלית נמוכה משיעור ההיוון: {metrics['IRR Min']:.2f}%.")
+    st.error(f"תשואה פנימית (IRR) מינימלית נמוכה משיעור ההיוון: {metrics['IRR Min']:.2f}%.")
+
 
 # הצגת תוצאות פיננסיות מפורטות
 st.write(f"**עלויות הקמה כוללות:** {int(metrics['Total Construction Cost']):,} ₪")
