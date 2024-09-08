@@ -3,3 +3,7 @@ numpy
 pandas
 matplotlib
 numpy-financial
+streamlit
+pandas
+openpyxl
+fpdf
