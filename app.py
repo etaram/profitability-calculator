@@ -4,28 +4,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy_financial as npf
 
-# הגדרות לעברית וכיווניות מימין לשמאל עבור Streamlit
-plt.rc('font', family='Arial')
-plt.rcParams['axes.unicode_minus'] = False
-
-# עיצוב כותרת האפליקציה
+# עיצוב כותרת האפליקציה והסגנון הכללי
 st.markdown(
     """
     <style>
     .main-title {
-        font-size: 40px;
+        font-size: 42px; /* הגדלת גודל הכותרת */
         color: #d04f30;
         text-align: center;
         margin-bottom: 30px;
     }
     .stApp {
-        background-color: #2c3e50;
+        background-color: #ffffff; /* שינוי צבע רקע ללבן */
     }
     .sidebar .sidebar-content {
-        background-color: #d5e8d4;
+        background-color: #f0f0f0; /* שינוי צבע רקע התפריט הצדדי לאפור בהיר */
     }
     .stButton>button {
-        background-color: #6baed6;
+        background-color: #4CAF50; /* צבע ירוק לכפתורים */
         color: white;
         border-radius: 10px;
         border: none;
@@ -34,18 +30,23 @@ st.markdown(
         margin-top: 10px;
     }
     .stButton>button:hover {
-        background-color: #4292c6;
+        background-color: #45a049; /* צבע ירוק כהה יותר לכפתורים בהובר */
         color: white;
     }
-    .css-1kyxreq, .css-14xtw13, .css-1lcbmhc {
-        color: #ffffff;
+    /* עיצוב כללי של הטקסט */
+    .css-1cpxqw2, .css-1kyxreq, .css-14xtw13, .css-1lcbmhc, .css-2trqyj, .css-1vbd788, .css-1b0ba9k, .css-10trblm {
+        color: #000000 !important; /* שינוי צבע טקסט לשחור */
+        font-size: 20px !important; /* הגדלת גודל הטקסט */
         text-align: right;  /* כיווניות לימין */
     }
     .dataframe {
-        background-color: #34495e;
-        color: #ffffff;
+        background-color: #ffffff; /* צבע רקע לבן לטבלאות */
+        color: #000000 !important; /* צבע טקסט שחור */
+        font-size: 20px !important; /* הגדלת גודל הטקסט בטבלאות */
         border: 1px solid #dddddd;
         text-align: right; /* כיווניות לימין */
+        padding: 5px; /* הוספת מרווח פנימי סביב הטקסט בטבלאות */
+        border-radius: 5px; /* הוספת עיגול פינות לטבלאות */
     }
     @media (max-width: 768px) {
         .stApp {
@@ -53,7 +54,7 @@ st.markdown(
         }
     }
     </style>
-    """,
+    """, 
     unsafe_allow_html=True
 )
 
