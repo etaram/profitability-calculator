@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy_financial as npf
+from fpdf import FPDF
 
 # עיצוב כותרת האפליקציה והסגנון הכללי
 st.markdown(
@@ -179,7 +180,6 @@ def calculate_loan_repayment(total_loan, annual_rate, loan_term_years, repayment
     payments = []
 
     if repayment_type == 'שפיצר':
-        # חישוב תשלום חודשי קבוע (שפיצר)
         monthly_payment = npf.pmt(monthly_rate, num_payments, -total_loan)
         for n in range(1, num_payments + 1):
             interest_payment = total_loan * monthly_rate
@@ -194,7 +194,6 @@ def calculate_loan_repayment(total_loan, annual_rate, loan_term_years, repayment
             })
 
     elif repayment_type == 'קרן שווה':
-        # חישוב החזר קרן שווה
         monthly_principal = total_loan / num_payments
         for n in range(1, num_payments + 1):
             interest_payment = total_loan * monthly_rate
@@ -209,7 +208,6 @@ def calculate_loan_repayment(total_loan, annual_rate, loan_term_years, repayment
             })
 
     elif repayment_type == 'בוליט':
-        # חישוב החזר בוליט
         for n in range(1, num_payments + 1):
             interest_payment = total_loan * monthly_rate
             payments.append({
@@ -287,75 +285,108 @@ ax3.legend()
 ax3.grid(True)
 st.pyplot(fig3)
 
-# מחשבון אינטראקטיבי להשוואה בין תרחישים
-st.markdown("<div dir='rtl'>### השוואה בין תרחישים</div>", unsafe_allow_html=True)
-num_villas_scenario_1 = st.slider('מספר וילות - תרחיש 1', min_value=5, max_value=40, value=10, step=1, key='scenario_1')
-num_villas_scenario_2 = st.slider('מספר וילות - תרחיש 2', min_value=5, max_value=40, value=20, step=1, key='scenario_2')
 
-metrics_scenario_1 = calculate_financial_metrics(num_villas_scenario_1, villa_size_sqm)
-metrics_scenario_2 = calculate_financial_metrics(num_villas_scenario_2, villa_size_sqm)
+# פונקציה לניתוח רגישות עבור ROI מול תקופת ההחזר
+def sensitivity_analysis_roi_vs_time(base_villas, base_size, variable_name, variable_range):
+    roi_results = []
+    payback_results = []
 
-comparison_df = pd.DataFrame({
-    'מדד': ['NPV Min', 'NPV Max', 'ROI Min', 'ROI Max', 'IRR Min', 'IRR Max', 'תקופת החזר מינימלית', 'תקופת החזר מקסימלית', 'רווח גולמי שנתי', 'רווח תפעולי שנתי'],
-    'תרחיש 1': [
-        f"{int(metrics_scenario_1['NPV Min']):,} ₪",
-        f"{int(metrics_scenario_1['NPV Max']):,} ₪",
-        f"{metrics_scenario_1['ROI Min']:.2f}%",
-        f"{metrics_scenario_1['ROI Max']:.2f}%",
-        f"{metrics_scenario_1['IRR Min']:.2f}%",
-        f"{metrics_scenario_1['IRR Max']:.2f}%",
-        f"{metrics_scenario_1['Payback Period Min']:.2f} שנים",
-        f"{metrics_scenario_1['Payback Period Max']:.2f} שנים",
-        f"{int(metrics_scenario_1['Gross Annual Profit']):,} ₪",
-        f"{int(metrics_scenario_1['Operating Annual Profit']):,} ₪"
-    ],
-    'תרחיש 2': [
-        f"{int(metrics_scenario_2['NPV Min']):,} ₪",
-        f"{int(metrics_scenario_2['NPV Max']):,} ₪",
-        f"{metrics_scenario_2['ROI Min']:.2f}%",
-        f"{metrics_scenario_2['ROI Max']:.2f}%",
-        f"{metrics_scenario_2['IRR Min']:.2f}%",
-        f"{metrics_scenario_2['IRR Max']:.2f}%",
-        f"{metrics_scenario_2['Payback Period Min']:.2f} שנים",
-        f"{metrics_scenario_2['Payback Period Max']:.2f} שנים",
-        f"{int(metrics_scenario_2['Gross Annual Profit']):,} ₪",
-        f"{int(metrics_scenario_2['Operating Annual Profit']):,} ₪"
-    ]
-})
+    for value in variable_range:
+        # הגדרת ערך משתנה בהתאם למשתנה לניתוח רגישות
+        if variable_name == 'Number of Villas':
+            metrics = calculate_financial_metrics(value, base_size)
+        elif variable_name == 'Occupancy Rate':
+            global occupancy_rate
+            occupancy_rate = value / 100
+            metrics = calculate_financial_metrics(base_villas, base_size)
+        elif variable_name == 'Price per Night':
+            global price_per_night
+            price_per_night = value
+            metrics = calculate_financial_metrics(base_villas, base_size)
 
-st.dataframe(comparison_df.style.set_properties(**{'text-align': 'right'}))
+        # הוספת תוצאות ה-ROI ותקופת ההחזר לרשימות
+        roi_results.append(metrics['ROI Min'])
+        payback_results.append(metrics['Payback Period Min'])
 
-# הערכת רווחיות לשני התרחישים
-st.write("### חוות דעת על רווחיות התרחישים")
-for scenario_num, metrics in zip([1, 2], [metrics_scenario_1, metrics_scenario_2]):
-    st.write(f"**תרחיש {scenario_num}:**")
-    if metrics['NPV Min'] > 0 and metrics['IRR Min'] > discount_rate * 100:
-        st.success(f"תרחיש {scenario_num} רווחי ומציע החזר חיובי על ההשקעה.")
-    else:
-        st.error(f"תרחיש {scenario_num} עשוי להיות פחות רווחי. מומלץ לבחון מחדש את הפרמטרים ולהעריך את הסיכונים.")
+    return roi_results, payback_results
 
-# התאמה לרספונסיביות
-st.write("""
-    <style>
-    @media (max-width: 768px) {
-        .stApp {
-            padding: 20px;
-        }
-        .main-title {
-            font-size: 28px;
-        }
-        .stButton>button {
-            height: 35px;
-        }
+
+# הצגת תפריט ניתוח רגישות
+st.markdown("### Sensitivity Analysis: ROI vs. Payback Period")
+variable_to_analyze = st.selectbox('Select Variable for Sensitivity Analysis',
+                                   ['Number of Villas', 'Occupancy Rate', 'Price per Night'])
+
+# הגדרת טווחים מעודכנים
+if variable_to_analyze == 'Number of Villas':
+    variable_range = st.slider('Select Range for Number of Villas', min_value=5, max_value=40, value=(10, 20))
+elif variable_to_analyze == 'Occupancy Rate':
+    variable_range = st.slider('Select Range for Occupancy Rate (%)', min_value=0, max_value=100, value=(20, 80))
+elif variable_to_analyze == 'Price per Night':
+    variable_range = st.slider('Select Range for Price per Night (₪)', min_value=2000, max_value=8000,
+                               value=(3500, 5000))
+
+# חישוב תוצאות ניתוח רגישות
+roi_results_sensitivity, payback_results_sensitivity = sensitivity_analysis_roi_vs_time(num_villas, villa_size_sqm,
+                                                                                        variable_to_analyze,
+                                                                                        range(variable_range[0],
+                                                                                              variable_range[1] + 1))
+
+# הצגת גרף ניתוח רגישות: ROI מול תקופת ההחזר
+fig_sensitivity, ax_sensitivity = plt.subplots(figsize=(10, 6))
+ax_sensitivity.plot(payback_results_sensitivity, roi_results_sensitivity, marker='o', linestyle='-', color='b',
+                    label='ROI vs. Payback Period')
+ax_sensitivity.set_title(f'Sensitivity Analysis: ROI vs. Payback Period by {variable_to_analyze}')
+ax_sensitivity.set_xlabel('Payback Period (Years)')
+ax_sensitivity.set_ylabel('ROI (%)')
+ax_sensitivity.legend()
+st.pyplot(fig_sensitivity)
+
+import pandas as pd
+import streamlit as st
+
+
+# פונקציה ליצירת דוח Excel
+def generate_excel_report():
+    # יצירת מילון עם הנתונים הפיננסיים
+    data = {
+        "Metric": [
+            "Gross Annual Profit", "Operating Annual Profit",
+            "Net Annual Profit before Subsidy", "Net Annual Profit with Minimum Subsidy",
+            "Net Annual Profit with Maximum Subsidy", "Net Present Value (NPV) Minimum",
+            "Net Present Value (NPV) Maximum", "Internal Rate of Return (IRR) Minimum",
+            "Internal Rate of Return (IRR) Maximum", "Return on Investment (ROI) Minimum",
+            "Return on Investment (ROI) Maximum", "Payback Period Minimum",
+            "Payback Period Maximum"
+        ],
+        "Value": [
+            f"{int(metrics['Gross Annual Profit']):,} ₪",
+            f"{int(metrics['Operating Annual Profit']):,} ₪",
+            f"{int(metrics['Net Annual Profit (Before Subsidy)']):,} ₪",
+            f"{int(metrics['Net Annual Profit with Min Subsidy']):,} ₪",
+            f"{int(metrics['Net Annual Profit with Max Subsidy']):,} ₪",
+            f"{int(metrics['NPV Min']):,} ₪",
+            f"{int(metrics['NPV Max']):,} ₪",
+            f"{metrics['IRR Min']:.2f}%",
+            f"{metrics['IRR Max']:.2f}%",
+            f"{metrics['ROI Min']:.2f}%",
+            f"{metrics['ROI Max']:.2f}%",
+            f"{metrics['Payback Period Min']:.2f} years",
+            f"{metrics['Payback Period Max']:.2f} years"
+        ]
     }
-    </style>
-    """, unsafe_allow_html=True)
 
-# שינוי צבע ההודעות לפי התוצאות
-if metrics['IRR Max'] > discount_rate * 100:
-    st.success(f"שיעור תשואה פנימית (IRR) מקסימלי חיובי: {metrics['IRR Max']:.2f}%.")
-else:
-    st.error(f"שיעור תשואה פנימית (IRR) מקסימלי נמוך משיעור ההיוון: {metrics['IRR Max']:.2f}%.")
+    # יצירת DataFrame
+    df = pd.DataFrame(data)
 
-# סיום הקוד
-st.write("**תודה על השימוש במחשבון ההשקעה הדינאמי שלנו לפרויקט וילות!**")
+    # שמירת DataFrame כקובץ Excel
+    excel_filename = "investment_report.xlsx"
+    df.to_excel(excel_filename, index=False)
+
+    # הצגת הודעה למשתמש והורדת הקובץ
+    with open(excel_filename, "rb") as file:
+        st.download_button(label='Download Excel Report', data=file, file_name=excel_filename)
+
+
+# כפתור ליצירת דוח Excel
+if st.button('Generate Excel Report'):
+    generate_excel_report()
