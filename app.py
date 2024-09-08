@@ -9,19 +9,19 @@ st.markdown(
     """
     <style>
     .main-title {
-        font-size: 42px; /* הגדלת גודל הכותרת */
+        font-size: 42px;
         color: #d04f30;
         text-align: center;
         margin-bottom: 30px;
     }
     .stApp {
-        background-color: #ffffff; /* שינוי צבע רקע ללבן */
+        background-color: #ffffff;
     }
     .sidebar .sidebar-content {
-        background-color: #f0f0f0; /* שינוי צבע רקע התפריט הצדדי לאפור בהיר */
+        background-color: #f0f0f0;
     }
     .stButton>button {
-        background-color: #4CAF50; /* צבע ירוק לכפתורים */
+        background-color: #4CAF50;
         color: white;
         border-radius: 10px;
         border: none;
@@ -30,23 +30,22 @@ st.markdown(
         margin-top: 10px;
     }
     .stButton>button:hover {
-        background-color: #45a049; /* צבע ירוק כהה יותר לכפתורים בהובר */
+        background-color: #45a049;
         color: white;
     }
-    /* עיצוב כללי של הטקסט */
     .css-1cpxqw2, .css-1kyxreq, .css-14xtw13, .css-1lcbmhc, .css-2trqyj, .css-1vbd788, .css-1b0ba9k, .css-10trblm {
-        color: #000000 !important; /* שינוי צבע טקסט לשחור */
-        font-size: 20px !important; /* הגדלת גודל הטקסט */
-        text-align: right;  /* כיווניות לימין */
+        color: #000000 !important;
+        font-size: 20px !important;
+        text-align: right;
     }
     .dataframe {
-        background-color: #ffffff; /* צבע רקע לבן לטבלאות */
-        color: #000000 !important; /* צבע טקסט שחור */
-        font-size: 20px !important; /* הגדלת גודל הטקסט בטבלאות */
+        background-color: #ffffff;
+        color: #000000 !important;
+        font-size: 20px !important;
         border: 1px solid #dddddd;
-        text-align: right; /* כיווניות לימין */
-        padding: 5px; /* הוספת מרווח פנימי סביב הטקסט בטבלאות */
-        border-radius: 5px; /* הוספת עיגול פינות לטבלאות */
+        text-align: right;
+        padding: 5px;
+        border-radius: 5px;
     }
     @media (max-width: 768px) {
         .stApp {
@@ -54,7 +53,7 @@ st.markdown(
         }
     }
     </style>
-    """, 
+    """,
     unsafe_allow_html=True
 )
 
@@ -77,31 +76,34 @@ def calculate_financial_metrics(villas, size):
         planning_and_consultants_cost
     )
 
-    # הכנסות שנתיות מהשכרת וילות
-    annual_revenue = price_per_night * (365 * occupancy_rate) * villas
+    # חישוב הכנסות שנתיות מהשכרת וילות
+    annual_revenue = price_per_night * occupancy_rate * 365 * villas
 
-    # חישוב עלויות תפעול שנתיות
-    operational_cost_per_villa = monthly_operational_cost_per_villa * 12
+    # חישוב רווח גולמי שנתי (ברוטו)
+    gross_annual_profit = annual_revenue
+
+    # חישוב עלויות תפעול משתנות (ניקיון ואביזרים)
     total_cleaning_cost = cleaning_cost_per_night * 365 * occupancy_rate * villas
     total_accessories_cost = accessories_cost_per_night * 365 * occupancy_rate * villas
+
+    # חישוב עלויות תפעול קבועות (תפעול חודשי לוילה, ביטוח ושיווק)
+    operational_cost_per_villa = monthly_operational_cost_per_villa * 12
     total_insurance_cost = annual_insurance_cost_per_villa * villas
-    total_operational_cost = (
-        operational_cost_per_villa * villas +
-        annual_marketing_cost +
-        total_cleaning_cost +
-        total_accessories_cost +
-        total_insurance_cost
-    )
+    total_operational_fixed_cost = (operational_cost_per_villa * villas + total_insurance_cost + annual_marketing_cost)
 
-    # רווח גולמי שנתי
-    gross_annual_profit = annual_revenue - total_operational_cost
+    # חישוב רווח תפעולי שנתי
+    operating_annual_profit = gross_annual_profit - (total_cleaning_cost + total_accessories_cost + total_operational_fixed_cost)
 
-    # חישוב רווח נקי שנתי לאחר מס (ללא סובסידיה)
-    net_annual_profit_before_subsidy = gross_annual_profit * (1 - tax_rate)
+    # חישוב רווח נקי שנתי לפני סובסידיה (כולל מס שנתי)
+    net_annual_profit_before_subsidy = operating_annual_profit * (1 - tax_rate)
 
-    # חישוב רווח נקי שנתי כולל סובסידיה
-    net_annual_profit_with_subsidy_min = net_annual_profit_before_subsidy + (total_construction_cost * subsidy_min / loan_term)
-    net_annual_profit_with_subsidy_max = net_annual_profit_before_subsidy + (total_construction_cost * subsidy_max / loan_term)
+    # חישוב חלק שנתי של הסובסידיה
+    annual_subsidy_min = (total_construction_cost * subsidy_min) / loan_term
+    annual_subsidy_max = (total_construction_cost * subsidy_max) / loan_term
+
+    # חישוב רווח נקי שנתי כולל סובסידיה (מחולק לאורך כל תקופת ההלוואה)
+    net_annual_profit_with_subsidy_min = net_annual_profit_before_subsidy + annual_subsidy_min
+    net_annual_profit_with_subsidy_max = net_annual_profit_before_subsidy + annual_subsidy_max
 
     # חישוב NPV עם סובסידיה
     cash_flow_min = [-total_construction_cost] + [net_annual_profit_with_subsidy_min] * loan_term
@@ -123,6 +125,11 @@ def calculate_financial_metrics(villas, size):
 
     # החזרת ערכי המדדים הפיננסיים
     return {
+        'Gross Annual Profit': gross_annual_profit,
+        'Operating Annual Profit': operating_annual_profit,
+        'Net Annual Profit (Before Subsidy)': net_annual_profit_before_subsidy,
+        'Net Annual Profit with Min Subsidy': net_annual_profit_with_subsidy_min,
+        'Net Annual Profit with Max Subsidy': net_annual_profit_with_subsidy_max,
         'NPV Min': total_npv_min,
         'NPV Max': total_npv_max,
         'ROI Min': roi_min,
@@ -131,12 +138,8 @@ def calculate_financial_metrics(villas, size):
         'IRR Max': irr_max,
         'Payback Period Min': payback_period_min,
         'Payback Period Max': payback_period_max,
-        'Gross Annual Profit': gross_annual_profit,
-        'Net Annual Profit (Before Subsidy)': net_annual_profit_before_subsidy,
-        'Net Annual Profit with Min Subsidy': net_annual_profit_with_subsidy_min,
-        'Net Annual Profit with Max Subsidy': net_annual_profit_with_subsidy_max,
         'Total Construction Cost': total_construction_cost,
-        'Annual Operational Cost': total_operational_cost
+        'Annual Operational Cost': total_operational_fixed_cost + total_cleaning_cost + total_accessories_cost
     }
 
 # קלטים מהמשתמש
@@ -239,21 +242,9 @@ loan_payments_df = pd.DataFrame(loan_payments)
 # חישוב תוצאות פיננסיות לפרויקט
 metrics = calculate_financial_metrics(num_villas, villa_size_sqm)
 
-# הצגת התראות דינמיות על סמך תוצאות
-if metrics['NPV Min'] > 0:
-    st.success(f"הפרויקט רווחי עם NPV מינימלי של {int(metrics['NPV Min']):,} ₪!")
-else:
-    st.error("הפרויקט עשוי להיות לא רווחי. ה-NPV המינימלי שלילי.")
-
-if metrics['IRR Min'] > discount_rate * 100:
-    st.success(f"שיעור תשואה פנימית (IRR) מינימלי חיובי: {metrics['IRR Min']:.2f}%.")
-else:
-    st.error(f"שיעור תשואה פנימית (IRR) מינימלי נמוך משיעור ההיוון: {metrics['IRR Min']:.2f}%.")
-
 # הצגת תוצאות פיננסיות מפורטות
-st.write(f"**עלויות הקמה כוללות:** {int(metrics['Total Construction Cost']):,} ₪")
-st.write(f"**עלויות תפעול שנתיות:** {int(metrics['Annual Operational Cost']):,} ₪")
 st.write(f"**רווח גולמי שנתי:** {int(metrics['Gross Annual Profit']):,} ₪")
+st.write(f"**רווח תפעולי שנתי:** {int(metrics['Operating Annual Profit']):,} ₪")
 st.write(f"**רווח נקי שנתי לפני סובסידיה:** {int(metrics['Net Annual Profit (Before Subsidy)']):,} ₪")
 st.write(f"**רווח נקי שנתי עם סובסידיה מינימלית:** {int(metrics['Net Annual Profit with Min Subsidy']):,} ₪")
 st.write(f"**רווח נקי שנתי עם סובסידיה מקסימלית:** {int(metrics['Net Annual Profit with Max Subsidy']):,} ₪")
@@ -305,7 +296,7 @@ metrics_scenario_1 = calculate_financial_metrics(num_villas_scenario_1, villa_si
 metrics_scenario_2 = calculate_financial_metrics(num_villas_scenario_2, villa_size_sqm)
 
 comparison_df = pd.DataFrame({
-    'מדד': ['NPV Min', 'NPV Max', 'ROI Min', 'ROI Max', 'IRR Min', 'IRR Max', 'תקופת החזר מינימלית', 'תקופת החזר מקסימלית', 'רווח גולמי שנתי'],
+    'מדד': ['NPV Min', 'NPV Max', 'ROI Min', 'ROI Max', 'IRR Min', 'IRR Max', 'תקופת החזר מינימלית', 'תקופת החזר מקסימלית', 'רווח גולמי שנתי', 'רווח תפעולי שנתי'],
     'תרחיש 1': [
         f"{int(metrics_scenario_1['NPV Min']):,} ₪",
         f"{int(metrics_scenario_1['NPV Max']):,} ₪",
@@ -315,7 +306,8 @@ comparison_df = pd.DataFrame({
         f"{metrics_scenario_1['IRR Max']:.2f}%",
         f"{metrics_scenario_1['Payback Period Min']:.2f} שנים",
         f"{metrics_scenario_1['Payback Period Max']:.2f} שנים",
-        f"{int(metrics_scenario_1['Gross Annual Profit']):,} ₪"
+        f"{int(metrics_scenario_1['Gross Annual Profit']):,} ₪",
+        f"{int(metrics_scenario_1['Operating Annual Profit']):,} ₪"
     ],
     'תרחיש 2': [
         f"{int(metrics_scenario_2['NPV Min']):,} ₪",
@@ -326,7 +318,8 @@ comparison_df = pd.DataFrame({
         f"{metrics_scenario_2['IRR Max']:.2f}%",
         f"{metrics_scenario_2['Payback Period Min']:.2f} שנים",
         f"{metrics_scenario_2['Payback Period Max']:.2f} שנים",
-        f"{int(metrics_scenario_2['Gross Annual Profit']):,} ₪"
+        f"{int(metrics_scenario_2['Gross Annual Profit']):,} ₪",
+        f"{int(metrics_scenario_2['Operating Annual Profit']):,} ₪"
     ]
 })
 
@@ -364,3 +357,5 @@ if metrics['IRR Max'] > discount_rate * 100:
 else:
     st.error(f"שיעור תשואה פנימית (IRR) מקסימלי נמוך משיעור ההיוון: {metrics['IRR Max']:.2f}%.")
 
+# סיום הקוד
+st.write("**תודה על השימוש במחשבון ההשקעה הדינאמי שלנו לפרויקט וילות!**")
